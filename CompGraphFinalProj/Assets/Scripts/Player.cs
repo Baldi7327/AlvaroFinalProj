@@ -1,6 +1,5 @@
 using System.Collections;
 using UnityEngine;
-
 public class Player : MonoBehaviour
 {
     [Header("Camera")]
@@ -17,14 +16,19 @@ public class Player : MonoBehaviour
     [SerializeField] private float bulletSpeed = 40f;
     [SerializeField] private float rateOfFire = 300f;
     [SerializeField] private float slideRecoil = 0.05f;
-    [SerializeField] private float verticalRecoil = 3f;
     [SerializeField] private Vector3 defaultPosition;
     [SerializeField] private Transform gun;
     [SerializeField] private Transform bulletSpawn;
     [SerializeField] private Rigidbody bulletPrefab;
     [Header("Bullet Materials")]
     [SerializeField] private Material[] bulletMaterials;
+    [Header("VFX")]
+    [SerializeField] private ParticleSystem shootVFX;
+    [SerializeField] private ParticleSystem endVFX;
+    [Header("Enemies")]
+    [SerializeField] private GameObject[] enemies;
 
+    private bool end = false;
     private bool canShoot = true;
     private float xrot;
     private float yrot;
@@ -34,8 +38,6 @@ public class Player : MonoBehaviour
 
     private Vector3 targetLocalPos;
     private Vector3 currentLocalPos;
-    private Vector3 targetLocalEuler;
-    private Vector3 currentLocalEuler;
 
     private void Start()
     {
@@ -47,12 +49,14 @@ public class Player : MonoBehaviour
         yrot = transform.eulerAngles.y;
         targetLocalPos = defaultPosition;
         currentLocalPos = gun.localPosition;
-
-        targetLocalEuler = Vector3.zero;
-        currentLocalEuler = gun.localEulerAngles;
     }
     private void Update()
     {
+        if (end)
+        {
+            rigidBody.linearVelocity = Vector3.zero;
+            return;
+        }
         float vertical = Input.GetAxisRaw("Vertical");
         float horizontal = Input.GetAxisRaw("Horizontal");
         inputDir = new Vector2(vertical, horizontal);
@@ -70,13 +74,23 @@ public class Player : MonoBehaviour
         if (Input.GetKey(KeyCode.Mouse0) && canShoot) Fire();
 
         currentLocalPos = Vector3.Lerp(currentLocalPos, targetLocalPos, 12f * Time.deltaTime);
-        currentLocalEuler = Vector3.Lerp(currentLocalEuler, targetLocalEuler, 12f * Time.deltaTime);
 
-        gun.SetLocalPositionAndRotation(currentLocalPos, Quaternion.Euler(currentLocalEuler));
+        gun.localPosition = currentLocalPos;
+        gun.rotation = Quaternion.LookRotation(((cam.position + cam.forward * 200f) - gun.position).normalized);
         targetLocalPos = Vector3.Lerp(targetLocalPos, defaultPosition, 5f * Time.deltaTime);
-        targetLocalEuler = Vector3.Lerp(targetLocalEuler, Vector3.zero, 5f * Time.deltaTime);
-    }
 
+        int c = 0;
+        foreach (var e in enemies)
+        {
+            if (!e.activeInHierarchy) c++;
+        }
+        if (c >= enemies.Length)
+        {
+            ParticleSystem p = Instantiate(endVFX, bulletSpawn.position, bulletSpawn.rotation);
+            p.Play();
+            end = true;
+        }
+    }
     private void FixedUpdate()
     {
         Vector3 input = transform.forward * inputDir.x + transform.right * inputDir.y;
@@ -87,18 +101,20 @@ public class Player : MonoBehaviour
         Vector3 force = rigidBody.mass * acceleration * velChange;
         rigidBody.AddForce(force, ForceMode.Force);
     }
-
     private void Fire()
     {
+        ParticleSystem p = Instantiate(shootVFX, bulletSpawn.position, bulletSpawn.rotation);
+        p.Play();
+
         Rigidbody b = Instantiate(bulletPrefab, bulletSpawn.position, bulletSpawn.rotation);
         b.linearVelocity = bulletSpawn.forward * bulletSpeed;
 
+        b.gameObject.GetComponent<MeshRenderer>().material = bulletMaterials[Random.Range(0, bulletMaterials.Length)];
+
         targetLocalPos += Vector3.back * slideRecoil;
-        targetLocalEuler += new Vector3(-verticalRecoil, 0f, 0f);
 
         StartCoroutine(DelayShot());
     }
-
     private IEnumerator DelayShot()
     {
         canShoot = false;
@@ -106,5 +122,12 @@ public class Player : MonoBehaviour
         yield return new WaitForSeconds(delay);
 
         canShoot = true;
+    }
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.layer == 8)
+        {
+            transform.position = Vector3.zero;
+        }
     }
 }
