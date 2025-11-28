@@ -8,6 +8,10 @@ public class Player : MonoBehaviour
     [SerializeField] private float maxAngle = 80f;
     [SerializeField] private Transform cam;
 
+    [SerializeField] private MeshRenderer[] objToToggle;
+    [SerializeField] private Material[] toggleMats;
+    [SerializeField] private Material offMat;
+
     [Header("Movement")]
     [SerializeField] private float speed = 5f;
     [SerializeField] private float acceleration = 6f;
@@ -73,6 +77,8 @@ public class Player : MonoBehaviour
 
         if (Input.GetKey(KeyCode.Mouse0) && canShoot) Fire();
 
+        if (Input.GetKeyDown(KeyCode.L)) ToggleObjectmat();
+
         currentLocalPos = Vector3.Lerp(currentLocalPos, targetLocalPos, 12f * Time.deltaTime);
 
         gun.localPosition = currentLocalPos;
@@ -90,6 +96,15 @@ public class Player : MonoBehaviour
             p.Play();
             end = true;
         }
+    }
+    bool usingSpecial = true;
+    private void ToggleObjectmat()
+    {
+        for (int i = 0; i < objToToggle.Length; i++)
+        {
+            objToToggle[i].material = usingSpecial ? offMat : toggleMats[i];
+        }
+        usingSpecial = !usingSpecial;
     }
     private void FixedUpdate()
     {

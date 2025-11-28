@@ -1275,6 +1275,13 @@ MonoBehaviour:
   minAngle: -70
   maxAngle: 80
   cam: {fileID: 330585546}
+  objToToggle:
+  - {fileID: 478595476}
+  - {fileID: 2108230595}
+  toggleMats:
+  - {fileID: 2100000, guid: b778d019103402e4faf58c0f9bd4d067, type: 2}
+  - {fileID: 2100000, guid: 1ec1877aac86ca741b2da5e4c22a4c34, type: 2}
+  offMat: {fileID: 2100000, guid: c5502aa67901ad945bf8318babd67654, type: 2}
   speed: 5
   acceleration: 6
   bulletSpeed: 25
@@ -2424,6 +2431,11 @@ PrefabInstance:
 --- !u!4 &2108230594 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 3faddfb691f48c542b0c46b1a1fdb2bf, type: 3}
+  m_PrefabInstance: {fileID: 2108230593}
+  m_PrefabAsset: {fileID: 0}
+--- !u!23 &2108230595 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -7511558181221131132, guid: 3faddfb691f48c542b0c46b1a1fdb2bf, type: 3}
   m_PrefabInstance: {fileID: 2108230593}
   m_PrefabAsset: {fileID: 0}
 --- !u!1660057539 &9223372036854775807

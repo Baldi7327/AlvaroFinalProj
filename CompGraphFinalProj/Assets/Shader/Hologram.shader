@@ -2,8 +2,8 @@ Shader "Unlit/HologramExtended"
 {
     Properties
     {
-        _MainTex        ("Main Texture", 2D) = "white" {}  // Main texture
-        _MainTint       ("Main Tint", Color) = (0.5, 1, 1, 1) // NEW color tint
+        _MainTex        ("Main Texture", 2D) = "white" {}
+        _MainTint       ("Main Tint", Color) = (0.5, 1, 1, 1)
 
         _LineColor      ("Line Color", Color) = (0, 1, 1, 1)  // Scan lines
         _FresnelColor   ("Fresnel Color", Color) = (0, 0.8, 1, 1)
@@ -14,21 +14,17 @@ Shader "Unlit/HologramExtended"
 
         _Transparency   ("Base Transparency", Range(0, 1)) = 0.5
 
-        // --- NEW: Noise flicker / glitch ---
         _NoiseTex       ("Noise Texture", 2D) = "white" {}  // greyscale noise
         _NoiseScale     ("Noise UV Scale", Float) = 4.0
         _NoiseSpeed     ("Noise Scroll Speed", Float) = 1.0
         _NoiseIntensity ("Noise Intensity", Range(0, 1)) = 0.5  // how strong the flicker is
 
-        // --- NEW: Emission control ---
         _EmissionColor    ("Emission Color", Color) = (0, 1, 1, 1)
         _EmissionStrength ("Emission Strength", Range(0, 5)) = 1.0
 
-        // --- NEW: Distance fade ---
         _DistanceFadeStart ("Fade Start Distance", Float) = 5.0
         _DistanceFadeEnd   ("Fade End Distance", Float) = 20.0
 
-        // --- NEW: Height-based dissolve ---
         _DissolveHeight   ("Dissolve Height", Float) = 0.0
         _DissolveSoftness ("Dissolve Softness", Float) = 0.5
     }
@@ -65,14 +61,14 @@ Shader "Unlit/HologramExtended"
                 float3 normalWS    : TEXCOORD1;
                 float3 viewDirWS   : TEXCOORD2;
                 float2 uv          : TEXCOORD0;
-                float3 positionWS  : TEXCOORD3; // NEW for distance & dissolve
+                float3 positionWS  : TEXCOORD3;
             };
 
             // Textures
             TEXTURE2D(_MainTex);
             SAMPLER(sampler_MainTex);
 
-            TEXTURE2D(_NoiseTex);          // NEW
+            TEXTURE2D(_NoiseTex);
             SAMPLER(sampler_NoiseTex);
 
             // Material variables
@@ -116,11 +112,10 @@ Shader "Unlit/HologramExtended"
 
             half4 frag(Varyings IN) : SV_Target
             {
-                // Sample main texture & tint it
                 half4 texColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv);
                 half3 baseColor = texColor.rgb * _MainTint.rgb;
 
-                // Fresnel / rim
+                // Fresnel
                 half3 n = normalize(IN.normalWS);
                 half3 v = normalize(IN.viewDirWS);
                 half fresnel = pow(1.0h - saturate(dot(v, n)), _FresnelPower);
@@ -130,13 +125,13 @@ Shader "Unlit/HologramExtended"
                 float lineValue = sin(IN.uv.y * _LineFrequency + _Time.y * _LineSpeed);
                 half3 lineColor = _LineColor.rgb * step(0.5, lineValue);
 
-                // --- Noise-based flicker / glitch ---
+                // Noise-based flicker / glitch
                 float2 noiseUV = IN.uv * _NoiseScale + float2(0.0, _Time.y * _NoiseSpeed);
                 half noiseSample = SAMPLE_TEXTURE2D(_NoiseTex, sampler_NoiseTex, noiseUV).r;
                 // Map noise to [1 - intensity, 1 + intensity]
                 half noiseFactor = 1.0h + (noiseSample - 0.5h) * 2.0h * _NoiseIntensity;
 
-                // --- Distance-based fade ---
+                // Distance-based fade
                 float3 camPosWS = GetCameraPositionWS();
                 float dist = distance(camPosWS, IN.positionWS);
 
@@ -147,21 +142,20 @@ Shader "Unlit/HologramExtended"
                                         (_DistanceFadeEnd - _DistanceFadeStart));
                 }
 
-                // --- Height-based dissolve (bottom-up by default) ---
+                // Height-based dissolve
                 float h = IN.positionWS.y;
                 float dissolveMask = smoothstep(_DissolveHeight,
                                                 _DissolveHeight + _DissolveSoftness,
                                                 h);
-                // 1 = visible, 0 = dissolved (invert)
+                // 1 = visible, 0 = dissolved
                 float dissolveFactor = 1.0f - dissolveMask;
 
                 // Combine color contributions
                 half3 finalColor = baseColor + fresnelColor + lineColor;
 
-                // Emission on top
                 finalColor += _EmissionColor.rgb * _EmissionStrength;
 
-                // Alpha: base transparency * effects
+                // base transparency * effects
                 half alpha = _Transparency;
                 alpha *= noiseFactor;
                 alpha *= distFade;

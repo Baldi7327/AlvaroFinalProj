@@ -3,21 +3,21 @@ Shader "Unlit/ToonExtended"
     Properties
     {
         _BaseColor   ("Base Color", Color) = (1, 1, 1, 1)
-        _BaseMap     ("Base Map", 2D) = "white" {}          // NEW
-        _NormalMap   ("Normal Map", 2D) = "bump" {}         // NEW
-        _NormalScale ("Normal Strength", Range(0, 2)) = 1   // NEW
+        _BaseMap     ("Base Map", 2D) = "white" {}
+        _NormalMap   ("Normal Map", 2D) = "bump" {}
+        _NormalScale ("Normal Strength", Range(0, 2)) = 1
 
         _RampTex     ("Ramp Texture", 2D) = "white" {}
 
-        _ShadowColor ("Shadow Color", Color) = (0.1, 0.1, 0.1, 1) // NEW
+        _ShadowColor ("Shadow Color", Color) = (0.1, 0.1, 0.1, 1)
 
         _RimColor    ("Rim Color", Color) = (1, 1, 1, 1)
         _RimPower    ("Rim Power", Range(0.1, 8.0)) = 1.5
 
-        _EmissionColor    ("Emission Color", Color) = (0, 0, 0, 1) // NEW
-        _EmissionStrength ("Emission Strength", Range(0, 5)) = 0   // NEW
+        _EmissionColor    ("Emission Color", Color) = (0, 0, 0, 1)
+        _EmissionStrength ("Emission Strength", Range(0, 5)) = 0
 
-        _ScrollSpeed      ("Scroll Speed (XY)", Vector) = (0, 0, 0, 0) // NEW
+        _ScrollSpeed      ("Scroll Speed (XY)", Vector) = (0, 0, 0, 0)
     }
 
     SubShader
@@ -41,8 +41,8 @@ Shader "Unlit/ToonExtended"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS   : NORMAL;
-                float4 tangentOS  : TANGENT;     // NEW (for normal map)
-                float2 uv         : TEXCOORD0;   // NEW (for textures)
+                float4 tangentOS  : TANGENT;
+                float2 uv         : TEXCOORD0;
             };
 
             struct Varyings
@@ -78,7 +78,7 @@ Shader "Unlit/ToonExtended"
                 float4 _EmissionColor;
                 float  _EmissionStrength;
 
-                float2 _ScrollSpeed;   // xy used
+                float2 _ScrollSpeed;
                 float  _NormalScale;
             CBUFFER_END
 
@@ -90,17 +90,15 @@ Shader "Unlit/ToonExtended"
                 float3 posWS = TransformObjectToWorld(IN.positionOS.xyz);
                 OUT.positionHCS = TransformWorldToHClip(posWS);
 
-                // World-space normal/tangent/bitangent for normal mapping
                 OUT.normalWS  = normalize(TransformObjectToWorldNormal(IN.normalOS));
                 OUT.tangentWS = normalize(TransformObjectToWorldDir(IN.tangentOS.xyz));
                 OUT.bitangentWS = normalize(cross(OUT.normalWS, OUT.tangentWS) * IN.tangentOS.w);
 
-                // View direction in world space
                 OUT.viewDirWS = normalize(GetWorldSpaceViewDir(posWS));
 
                 // Base UV with tiling/offset + scrolling
                 float2 uv = TRANSFORM_TEX(IN.uv, _BaseMap);
-                uv += _ScrollSpeed.xy * _Time.y; // scroll over time
+                uv += _ScrollSpeed.xy * _Time.y;
                 OUT.uv = uv;
 
                 return OUT;
@@ -108,24 +106,18 @@ Shader "Unlit/ToonExtended"
 
             half4 frag(Varyings IN) : SV_Target
             {
-                // -------------------------------------------------------
                 // Lighting / main light
-                // -------------------------------------------------------
                 Light mainLight = GetMainLight();
                 half3 lightDirWS = normalize(mainLight.direction);
                 half3 lightColor = mainLight.color;
 
-                // -------------------------------------------------------
-                // Normal mapping (tangent space -> world space)
-                // -------------------------------------------------------
+                // Normal mapping
                 half3 normalWS = normalize(IN.normalWS); // fallback if no normal map
 
-                // Sample normal map in tangent space
                 half3 normalTS = UnpackNormal(
                     SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, IN.uv)
                 );
 
-                // Scale normal strength
                 normalTS.xy *= _NormalScale;
                 normalTS.z = sqrt(saturate(1.0h - dot(normalTS.xy, normalTS.xy)));
 
@@ -133,9 +125,7 @@ Shader "Unlit/ToonExtended"
                 float3x3 TBN = float3x3(IN.tangentWS, IN.bitangentWS, IN.normalWS);
                 normalWS = normalize(mul(TBN, normalTS));
 
-                // -------------------------------------------------------
                 // Base color / albedo from texture
-                // -------------------------------------------------------
                 half4 baseTex = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);
                 half3 baseColor = _BaseColor.rgb * baseTex.rgb;
 
@@ -148,17 +138,13 @@ Shader "Unlit/ToonExtended"
 
                 half3 finalColor = toonColor * lightColor;
 
-                // -------------------------------------------------------
                 // Rim light
-                // -------------------------------------------------------
                 half3 viewDir = normalize(IN.viewDirWS);
                 half rimDot = 1.0h - saturate(dot(viewDir, normalWS));
                 half rimFactor = pow(rimDot, _RimPower);
                 finalColor += _RimColor.rgb * rimFactor;
 
-                // -------------------------------------------------------
                 // Emission
-                // -------------------------------------------------------
                 finalColor += _EmissionColor.rgb * _EmissionStrength;
 
                 return half4(finalColor, _BaseColor.a * baseTex.a);
